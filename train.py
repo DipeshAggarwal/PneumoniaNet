@@ -4,11 +4,13 @@ matplotlib.use("Agg")
 from core.conv import PneumoniaNet
 from core.utils.helper import info
 from tensorflow.keras.layers.experimental import preprocessing
+from tensorflow.keras.models import Sequential
 from tensorflow.data import AUTOTUNE
 from core import config
 
 import tensorflow as tf
 import tensorflow_io as tfio
+import json
 
 # This function loads the hdf5 data into tf.data compatible form
 def load_hdf5(fn):
@@ -17,6 +19,36 @@ def load_hdf5(fn):
     
     return tf.data.Dataset.zip((images, labels))
 
+def aug_layers(images, labels, aug):
+    images = aug(images)
+    
+    return (images, layers)
+
+# Load the mean values we had saved udring the building database phase
+mean = json.loads(open(config.DATASET_MEAN).read())
+
+train_aug = Sequential([
+        # Normalise the Mean of the images.
+        preprocessing.Normalization(mean=[mean["R"], mean["G"], mean["B"]], variance=0.),
+        preprocessing.Rescaling(1./255),
+        preprocessing.RandomFlip("horizontal_and_vertical"),
+        preprocessing.RandomRotation(0.2),
+        preprocessing.RandomZoom(
+            height_factor=(-0.05, -0.10),
+            width_factor=(-0.05, -0.10)
+            )
+    ])
+
+test_aug = Sequential([
+        preprocessing.Normalization(mean=[mean["R"], mean["G"], mean["B"]], variance=0.),
+        preprocessing.Rescaling(1./255)
+    ])
+
+val_aug = Sequential([
+        preprocessing.Normalization(mean=[mean["R"], mean["G"], mean["B"]], variance=0.),
+        preprocessing.Rescaling(1./255)
+    ])
+
 # Load the HDF5 dataset
 train_dataset = load_hdf5(config.TRAIN_HDF5)
 test_dataset = load_hdf5(config.TEST_HDF5)
@@ -24,19 +56,22 @@ val_dataset = load_hdf5(config.VAL_HDF5)
 
 train_dataset = (train_dataset
 	.cache()
-	.batch(64)
+	.batch(config.BATCH_SIZE)
+    .map(lambda x, y: (train_aug(x), y), num_parallel_calls=AUTOTUNE)
 	.prefetch(AUTOTUNE)
 )
 
 test_dataset = (test_dataset
 	.cache()
-	.batch(64)
+	.batch(config.BATCH_SIZE)
+    .map(lambda x, y: (test_aug(x), y), num_parallel_calls=AUTOTUNE)
 	.prefetch(AUTOTUNE)
 )
 
 val_dataset = (val_dataset
 	.cache()
-	.batch(64)
+	.batch(config.BATCH_SIZE)
+    .map(lambda x, y: (val_aug(x), y), num_parallel_calls=AUTOTUNE)
 	.prefetch(AUTOTUNE)
 )
 

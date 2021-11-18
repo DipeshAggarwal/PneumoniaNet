@@ -16,5 +16,5 @@ DATASET_MEAN = "output/mean.json"
 DIM = (128, 128)
 
 INIT_LR = 1e-4
-NUM_EPOCHS = 20
+NUM_EPOCHS = 10
 BATCH_SIZE = 64
