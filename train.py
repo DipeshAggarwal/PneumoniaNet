@@ -1,13 +1,14 @@
 import matplotlib
 matplotlib.use("Agg")
 
+from core import config
 from core.conv import PneumoniaNet
 from core.utils.helper import info
+from core.callbacks import TrainingMonitor
 from tensorflow.keras.layers.experimental import preprocessing
 from tensorflow.keras.models import Sequential
 from tensorflow.data import AUTOTUNE
-from core import config
-
+from tensorflow.keras.optimizers import SGD
 import tensorflow as tf
 import tensorflow_io as tfio
 import json
@@ -18,11 +19,6 @@ def load_hdf5(fn):
     labels = tfio.IODataset.from_hdf5(fn, "/labels")
     
     return tf.data.Dataset.zip((images, labels))
-
-def aug_layers(images, labels, aug):
-    images = aug(images)
-    
-    return (images, layers)
 
 # Load the mean values we had saved udring the building database phase
 mean = json.loads(open(config.DATASET_MEAN).read())
@@ -77,19 +73,25 @@ val_dataset = (val_dataset
 
 info("Initializing model...")
 model = PneumoniaNet.build(128, 128, 3, 2)
+opt = SGD(learning_rate=config.INIT_LR)
 
 info("Compiling model...")
-model.compile(loss="sparse_categorical_crossentropy",
-	optimizer="sgd", metrics=["accuracy"])
+model.compile(loss="sparse_categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
+
+callbacks = [TrainingMonitor(fig_path=config.PLOT_PATH, json_path=config.PLOT_JSON_PATH)]
 
 # train the model
 info("Training model...")
 H = model.fit(
-	train_dataset,
-	validation_data=val_dataset,
+    train_dataset,
+    validation_data=val_dataset,
     batch_size=config.BATCH_SIZE,
-	epochs=config.NUM_EPOCHS)
+    epochs=config.NUM_EPOCHS,
+    callbacks=callbacks
+    )
 
 # show the accuracy on the testing set
 (loss, accuracy) = model.evaluate(test_dataset)
 info("Accuracy: {:.2f}%".format(accuracy * 100))
+
+model.save(config.MODEL_PATH)

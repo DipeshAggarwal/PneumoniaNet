@@ -12,9 +12,11 @@ VAL_HDF5 = "hdf5/val.hdf5"
 
 MODEL_PATH = "output/pneumonia.model"
 DATASET_MEAN = "output/mean.json"
+PLOT_PATH = "output/plot.png"
+PLOT_JSON_PATH = "output/plot.json"
 
 DIM = (128, 128)
 
 INIT_LR = 1e-4
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 BATCH_SIZE = 64
